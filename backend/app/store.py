@@ -16,7 +16,8 @@ class Store:
         }
 
     def module_names(self) -> list[str]:
-        return sorted(self._tables)
+        # 以下划线开头的表是聚合重算、口径版本等内部工作表，不参与业务模块概览。
+        return sorted(name for name in self._tables if not name.startswith("_"))
 
     def rows(self, module: str) -> list[dict[str, Any]]:
         return self._tables.setdefault(module, [])
@@ -28,6 +29,10 @@ class Store:
         return None
 
     def overview(self) -> dict[str, object]:
+        # 汇总层/应用层的待处理与异常量取自重算与待复核状态，先同步派生字段再统计。
+        from app.services.versioning import sync_all_flags
+
+        sync_all_flags()
         modules: list[dict[str, object]] = []
         for name in self.module_names():
             rows = self.rows(name)

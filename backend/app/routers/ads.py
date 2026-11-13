@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas import ActionResult, EntryPayload, PageResult
-from app.services.ads import AdsService
+from app.services.ads import AdsService, summary_table
 
 router = APIRouter(prefix="/api/ads", tags=["应用层输出"])
 
@@ -63,3 +63,22 @@ def export_entries() -> dict[str, Any]:
     """导出应用层输出清单：返回当前过滤条件下的全量数据。"""
     items, total = service.list_entries(page=1, size=10000)
     return {"module": "ads", "total": total, "items": items}
+
+
+@router.get("/{entry_id}/consumable", response_model=dict)
+def get_consumable(entry_id: int) -> dict:
+    """应用层输出当前可消费的汇总版本：版本、窗口、消费状态与待复核分区。"""
+    entry = service.get_entry(entry_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"输出流水 {entry_id} 不存在或已归档")
+    return {
+        "流水编号": entry.get("流水编号"),
+        "汇总表名": summary_table(entry),
+        "可消费版本": entry.get("可消费版本"),
+        "可消费窗口": entry.get("可消费窗口"),
+        "消费状态": entry.get("消费状态"),
+        "待复核数量": entry.get("待复核数量"),
+        "待复核分区": entry.get("待复核分区"),
+        "可消费分区版本": entry.get("可消费分区版本"),
+        "待复核记录": entry.get("待复核记录"),
+    }
